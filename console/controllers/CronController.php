@@ -461,6 +461,7 @@ class CronController extends \yii\console\Controller
 
         $i = 0;
         $sc = 0;
+        $failed = 0;
 
         foreach ($storeQuery->batch() as $stores) {
 
@@ -479,16 +480,20 @@ class CronController extends \yii\console\Controller
                 $store->platform_fee = 0.05;
 
                 if(!$store->save(false)) {
-                    print_r($store->getErrors());
-                    Yii::error($store->getErrors());
-                    die();
+                    $failed++;
+                    Yii::error([
+                        'message' => 'Cron failed to reset platform fee.',
+                        'restaurant_uuid' => $store->restaurant_uuid,
+                        'errors' => $store->getErrors(),
+                    ], __METHOD__);
+                    continue;
                 }
 
                 $i++;
             }
         }
 
-        echo $i. " store fixed, " . $sc . " subscription validated";
+        echo $i. " store fixed, " . $sc . " subscription validated, " . $failed . " failed";
     }
 
     /**
@@ -511,12 +516,11 @@ class CronController extends \yii\console\Controller
             ->with(['plan', 'restaurant']);
 
         $i = 0;
+        $failed = 0;
 
         foreach ($query->batch() as $subscriptions) {
 
             foreach ($subscriptions as $subscription) {
-
-                $i++;
 
                 //if (date('Y-m-d', strtotime($subscription->subscription_end_at)) < date('Y-m-d')) {
 
@@ -566,24 +570,36 @@ class CronController extends \yii\console\Controller
                 $subscription->subscription_status = Subscription::STATUS_INACTIVE;
 
                 if(!$subscription->save()) {
-                    print_r($subscription->getErrors());
-                    Yii::error($subscription->getErrors());
-                    die();
+                    $failed++;
+                    Yii::error([
+                        'message' => 'Cron failed to deactivate downgraded subscription.',
+                        'subscription_uuid' => $subscription->subscription_uuid,
+                        'restaurant_uuid' => $subscription->restaurant_uuid,
+                        'errors' => $subscription->getErrors(),
+                    ], __METHOD__);
+                    continue;
                 }
+
+                $i++;
 
                 //restore platform fee
                 $subscription->restaurant->platform_fee = 0.05;
                 if(!$subscription->restaurant->save(false)) {
-                    print_r($subscription->restaurant->getErrors());
-                    Yii::error($subscription->restaurant->getErrors());
-                    die();
+                    $failed++;
+                    Yii::error([
+                        'message' => 'Cron failed to restore platform fee after subscription downgrade.',
+                        'subscription_uuid' => $subscription->subscription_uuid,
+                        'restaurant_uuid' => $subscription->restaurant_uuid,
+                        'errors' => $subscription->restaurant->getErrors(),
+                    ], __METHOD__);
+                    continue;
                 }
 
                 //}
             }
         }
 
-        echo $i . " subscription deactivated";
+        echo $i . " subscription deactivated, " . $failed . " failed";
     }
 
     /**
@@ -698,14 +714,25 @@ class CronController extends \yii\console\Controller
                 //Yii::error('[Netlify > While Creating new site]' . json_encode($queue->getErrors()), __METHOD__);
 
                 $queue->queue_status = Queue::QUEUE_STATUS_FAILED;
-                $queue->queue_response = print_r($queue->getErrors(), true);
-                $queue->save(false);
+                $queue->queue_response = json_encode($queue->getErrors(), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+
+                if (!$queue->save(false)) {
+                    Yii::error([
+                        'message' => 'Cron could not mark build queue failed.',
+                        'queue_id' => $queue->queue_id,
+                        'restaurant_uuid' => $queue->restaurant_uuid,
+                        'errors' => $queue->getErrors(),
+                    ], __METHOD__);
+                }
+
+                Yii::error([
+                    'message' => 'Cron failed to create build js file.',
+                    'queue_id' => $queue->queue_id,
+                    'restaurant_uuid' => $queue->restaurant_uuid,
+                    'errors' => $queue->getErrors(),
+                ], __METHOD__);
 
                 $this->stdout("issue while creating build ! \n", Console::FG_RED, Console::BOLD);
-
-                echo "<pre>";
-                print_r($queue->getErrors());
-                exit;
 
                 return false;
             }
