@@ -41,9 +41,9 @@ const checkedActions = [
 ];
 
 const blockedPatterns = [
-  { label: "print_r", pattern: /print_r\s*\(/ },
-  { label: "die", pattern: /\bdie\s*(?:\(|;)/ },
-  { label: "exit", pattern: /\bexit\s*(?:\(|;)/ },
+  { label: "print_r", pattern: /print_r\s*\(/i },
+  { label: "die", pattern: /\bdie\s*(?:\(|;)/i },
+  { label: "exit", pattern: /\bexit\s*(?:\(|;)/i },
 ];
 
 for (const action of checkedActions) {
@@ -71,6 +71,10 @@ for (const message of requiredLogMessages) {
 
 if (!source.includes("Queue::QUEUE_STATUS_FAILED")) {
   throw new Error("Build queue failure status is not preserved");
+}
+
+if (!source.includes("catch (\\Throwable $e)")) {
+  throw new Error("Cron model saves are not guarded against database exceptions");
 }
 
 console.log("PASS CronController cron failure paths log and continue without print_r/die/exit");
