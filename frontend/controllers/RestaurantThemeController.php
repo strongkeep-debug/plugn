@@ -68,12 +68,16 @@ class RestaurantThemeController extends Controller {
      * @throws NotFoundHttpException if the model cannot be found
      */
     protected function findModel($storeUuid) {
-        if (Yii::$app->accountManager->getManagedAccount($storeUuid)) {
+        $managedAccount = Yii::$app->accountManager->getManagedAccount($storeUuid);
+
+        if ($managedAccount) {
 
             if (Yii::$app->user->identity->isOwner($storeUuid)) {
-                if (($model = RestaurantTheme::findOne(Yii::$app->accountManager->getManagedAccount($storeUuid)->restaurant_uuid)) !== null) {
+                if (($model = RestaurantTheme::findOne($managedAccount->restaurant_uuid)) !== null) {
                     return $model;
                 }
+
+                throw new NotFoundHttpException('The requested page does not exist.');
             } else {
                 throw new \yii\web\BadRequestHttpException('Sorry, you are not allowed to access this page.');
             }
