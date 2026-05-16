@@ -3,6 +3,7 @@
 namespace crm\modules\v1\controllers;
 
 use Yii;
+use common\models\AgentAssignment;
 use common\models\Ticket;
 use common\models\TicketComment;
 use yii\data\ActiveDataProvider;
@@ -102,12 +103,43 @@ class TicketController extends Controller
         $model = new Ticket();
         $model->staff_id = Yii::$app->request->getBodyParam("staff_id");
         $model->restaurant_uuid = Yii::$app->request->getBodyParam("restaurant_uuid");
-        $model->agent_id =  $model->restaurant->getAgentAssignments()->andWhere(['role'=>1])->one()->agent_id;
+
+        $restaurant = $model->restaurant;
+        if (!$restaurant) {
+            Yii::warning("CRM ticket create failed: restaurant not found for " . $model->restaurant_uuid, __METHOD__);
+
+            return [
+                "operation" => "error",
+                "message" => Yii::t('app', "Restaurant not found"),
+            ];
+        }
+
+        $ownerAssignment = $restaurant->getAgentAssignments()
+            ->andWhere(['role' => AgentAssignment::AGENT_ROLE_OWNER])
+            ->one();
+
+        if (!$ownerAssignment) {
+            Yii::warning("CRM ticket create failed: owner assignment missing for " . $model->restaurant_uuid, __METHOD__);
+
+            return [
+                "operation" => "error",
+                "message" => Yii::t('app', "Restaurant owner agent assignment is missing"),
+            ];
+        }
+
+        $model->agent_id = $ownerAssignment->agent_id;
 //        $model->staff_id =  Yii::$app->user->getId();
         $model->ticket_detail =  Yii::$app->request->getBodyParam("detail");
         $model->ticket_status = Ticket::STATUS_PENDING;
+        $attachments = Yii::$app->request->getBodyParam("attachments", []);
+        if (!is_array($attachments)) {
+            return [
+                "operation" => "error",
+                "message" => Yii::t('app', "Attachments must be an array"),
+            ];
+        }
         $model->attachments = ArrayHelper::getColumn(
-            Yii::$app->request->getBodyParam("attachments"),
+            $attachments,
             'Key'
         );
 
