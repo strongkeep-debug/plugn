@@ -84,10 +84,13 @@ class PasswordResetRequestForm extends Model {
             $partner->setScenario(Partner::SCENARIO_PASSWORD_TOKEN);
 
             if (!$partner->save()) {
+                Yii::error([
+                    'message' => 'Failed to save partner password reset token.',
+                    'partner_uuid' => $partner->partner_uuid,
+                    'errors' => $partner->errors,
+                ], __METHOD__);
 
-                //die(var_dump($partner->errors));
-
-                Yii::$app->session->setFlash('error', print_r($partner->errors, true));
+                Yii::$app->session->setFlash('error', Yii::t('app', 'Unable to send password reset email. Please try again later.'));
 
                 return false;
             }
