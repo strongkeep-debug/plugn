@@ -28,8 +28,14 @@ require(
     "Agent assignment failure logging should preserve model errors for operators",
 )
 require(
+    "Yii::error(json_encode([" in source,
+    "Agent assignment failure logging should serialize structured error details",
+)
+require(
     "setFlash('error', print_r($model->errors, true))" not in source
-    and "setFlash('error', var_dump($model->errors" not in source,
+    and "setFlash('error', var_dump($model->errors" not in source
+    and "setFlash('error', json_encode($model->errors" not in source
+    and "setFlash('error', serialize($model->errors" not in source,
     "Agent assignment flashes should not expose raw model errors",
 )
 
