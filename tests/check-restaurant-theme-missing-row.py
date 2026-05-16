@@ -1,10 +1,10 @@
 from pathlib import Path
+import re
 
 
 ROOT = Path(__file__).resolve().parents[1]
 controller = ROOT / "frontend" / "controllers" / "RestaurantThemeController.php"
 source = controller.read_text(encoding="utf-8")
-compact = "".join(source.split())
 
 
 def require(condition, message):
@@ -25,11 +25,14 @@ require(
     "Restaurant theme lookup should not dereference a repeated managed-account lookup",
 )
 require(
-    (
-        "if(($model=RestaurantTheme::findOne($managedAccount->restaurant_uuid))!==null)"
-        "{return$model;}thrownewNotFoundHttpException('Therequestedpagedoesnotexist.');"
+    re.search(
+        r"if\s*\(\s*\(\$model\s*=\s*RestaurantTheme::findOne\(\$managedAccount->restaurant_uuid\)\)"
+        r"\s*!==\s*null\s*\)\s*\{[^}]*return\s+\$model\s*;\s*\}\s*"
+        r"throw\s+new\s+NotFoundHttpException\s*\(",
+        source,
+        flags=re.S,
     )
-    in compact,
+    is not None,
     "Missing restaurant theme rows should throw NotFoundHttpException instead of falling through",
 )
 
