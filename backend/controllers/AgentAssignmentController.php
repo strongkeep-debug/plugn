@@ -94,10 +94,15 @@ class AgentAssignmentController extends Controller {
                 if ($model->validate() && $model->save()) {
                     return $this->redirect(['view', 'id' => $model->assignment_id]);
                 } else {
-                    Yii::$app->session->setFlash('error', print_r($model->errors, true));
+                    Yii::error([
+                        'message' => 'Failed to save agent assignment.',
+                        'agent_id' => $model->agent_id,
+                        'errors' => $model->errors,
+                    ], __METHOD__);
+                    Yii::$app->session->setFlash('error', 'Unable to save agent assignment. Please review the form and try again.');
                 }
             } else {
-                Yii::$app->session->setFlash('error', print_r($model->errors, true));
+                Yii::$app->session->setFlash('error', 'Selected agent could not be found. Please choose another agent.');
             }
         }
 
@@ -120,7 +125,13 @@ class AgentAssignmentController extends Controller {
             if ($model->validate() && $model->save()) {
                 return $this->redirect(['view', 'id' => $model->assignment_id]);
             } else {
-                Yii::$app->session->setFlash('error', print_r($model->errors, true));
+                Yii::error([
+                    'message' => 'Failed to save agent assignment.',
+                    'assignment_id' => $model->assignment_id,
+                    'agent_id' => $model->agent_id,
+                    'errors' => $model->errors,
+                ], __METHOD__);
+                Yii::$app->session->setFlash('error', 'Unable to save agent assignment. Please review the form and try again.');
             }
         }
 
